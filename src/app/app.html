@@ -1,0 +1,530 @@
+<div class="min-h-screen bg-[#F8FAFC] font-sans text-[#1E293B] flex flex-col">
+  <!-- Header -->
+  <header class="bg-indigo-600 border-b border-indigo-700 px-6 py-2.5 flex justify-between items-center sticky top-0 z-10 shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-white/30 shadow-inner">
+        <img src="https://olam.angiang.gov.vn/sites/default/files/Logo_OLAM_100.png" alt="Logo xã Ô Lâm" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white leading-none">Tài liệu họp</h1>
+        <p class="text-[8px] text-indigo-100 font-bold uppercase tracking-widest opacity-80">Xã Ô Lâm</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      @if (isAdmin()) {
+        <button (click)="logoutAdmin()" class="text-indigo-100 hover:text-white flex items-center gap-1 text-xs font-bold uppercase tracking-widest transition-all bg-white/10 px-3 py-2 rounded-xl hover:bg-white/20">
+          <mat-icon class="text-sm">logout</mat-icon> Thoát
+        </button>
+        <button (click)="closeMeetingModal(); isAddingMeeting.set(true)" class="bg-emerald-400 text-emerald-950 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-300 transition-all flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0">
+          <mat-icon class="text-lg">add_circle</mat-icon>
+          Tạo cuộc họp
+        </button>
+      } @else {
+        <button (click)="showAdminLogin.set(true)" class="text-indigo-100 hover:text-white flex items-center gap-1 text-xs font-bold uppercase tracking-widest transition-all bg-white/10 px-3 py-2 rounded-xl hover:bg-white/20">
+          <mat-icon class="text-sm">admin_panel_settings</mat-icon> Quản trị
+        </button>
+      }
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-hidden flex flex-col">
+    @if (selectedMeeting(); as meeting) {
+      <!-- Detail View -->
+      <section class="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
+        <!-- Main Content Area (Sidebar + Viewer) -->
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+          <!-- Document Selection Sidebar (Desktop) -->
+          @if (!isFullscreen()) {
+            <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto hidden md:flex shrink-0 animate-in slide-in-from-left duration-500">
+              <!-- Meeting Info in Sidebar -->
+              <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                <button (click)="backToList()" class="flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest hover:translate-x-[-4px] transition-transform mb-6">
+                  <mat-icon class="text-sm">arrow_back</mat-icon> Quay lại danh sách
+                </button>
+                
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-black uppercase tracking-widest rounded-md">Cuộc họp</span>
+                    <span class="text-slate-400 text-[9px] font-bold">
+                      {{ meeting.date | date:'dd/MM/yyyy' }}
+                      @if (meeting.time) { • {{ meeting.time }} }
+                    </span>
+                  </div>
+                  <h2 class="text-xl font-black tracking-tight text-slate-900 leading-tight">{{ meeting.title }}</h2>
+                  @if (meeting.description) {
+                    <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-3">{{ meeting.description }}</p>
+                  }
+                </div>
+              </div>
+
+              <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                  <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Danh mục tài liệu</h3>
+                  <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-black rounded-md">{{ meeting.docs.length }} FILE</span>
+                </div>
+                
+                <div class="space-y-2">
+                  @for (doc of meeting.docs; track $index) {
+                    <button 
+                      (click)="selectedDocIndex.set($index)"
+                      class="w-full p-3.5 rounded-xl text-left transition-all flex items-center gap-3 group relative overflow-hidden border border-transparent"
+                      [class.bg-slate-900]="selectedDocIndex() === $index"
+                      [class.text-white]="selectedDocIndex() === $index"
+                      [class.shadow-xl]="selectedDocIndex() === $index"
+                      [class.shadow-slate-200]="selectedDocIndex() === $index"
+                      [class.text-slate-500]="selectedDocIndex() !== $index"
+                      [class.hover:bg-slate-50]="selectedDocIndex() !== $index"
+                      [class.hover:border-slate-100]="selectedDocIndex() !== $index"
+                    >
+                      <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                           [class.bg-white/10]="selectedDocIndex() === $index"
+                           [class.bg-slate-100]="selectedDocIndex() !== $index"
+                           [class.group-hover:bg-white]="selectedDocIndex() !== $index">
+                        <mat-icon class="text-lg">article</mat-icon>
+                      </div>
+                      <div class="flex flex-col overflow-hidden">
+                        <span class="text-[10px] font-black uppercase tracking-wider truncate">{{ doc.name }}</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+              
+              <div class="mt-auto p-6">
+                <div class="bg-indigo-50 rounded-2xl p-4 border border-indigo-100/50">
+                  <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Mẹo</p>
+                  <p class="text-[9px] text-indigo-400/80 leading-relaxed font-bold">Dùng chế độ toàn màn hình để xem rõ hơn.</p>
+                </div>
+              </div>
+            </aside>
+
+            <!-- Mobile Header & Selection -->
+            <div class="md:hidden bg-white border-b border-slate-200 flex flex-col shrink-0">
+              <div class="p-4 border-b border-slate-50 flex justify-between items-center">
+                <button (click)="backToList()" class="text-indigo-600 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1">
+                  <mat-icon class="text-sm">arrow_back</mat-icon> Quay lại
+                </button>
+                <div class="flex flex-col items-end overflow-hidden">
+                  <span class="text-[10px] font-black text-slate-900 truncate max-w-[150px]">{{ meeting.title }}</span>
+                  <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                    {{ meeting.date | date:'dd/MM/yyyy' }}
+                    @if (meeting.time) { • {{ meeting.time }} }
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 overflow-x-auto no-scrollbar p-3">
+                @for (doc of meeting.docs; track $index) {
+                  <button 
+                    (click)="selectedDocIndex.set($index)"
+                    class="px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border"
+                    [class.bg-slate-900]="selectedDocIndex() === $index"
+                    [class.text-white]="selectedDocIndex() === $index"
+                    [class.border-slate-900]="selectedDocIndex() === $index"
+                    [class.bg-white]="selectedDocIndex() !== $index"
+                    [class.text-slate-500]="selectedDocIndex() !== $index"
+                    [class.border-slate-100]="selectedDocIndex() !== $index"
+                  >
+                    {{ doc.name }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Document Viewer -->
+          <div class="flex-1 overflow-hidden flex flex-col transition-all duration-500" [class.p-4]="!isFullscreen()" [class.md:p-8]="!isFullscreen()">
+            <div 
+              class="flex-1 bg-white overflow-hidden relative group transition-all duration-500" 
+              [class.rounded-3xl]="!isFullscreen()" 
+              [class.shadow-2xl]="!isFullscreen()" 
+              [class.border]="!isFullscreen()" 
+              [class.border-slate-200]="!isFullscreen()"
+            >
+            <!-- Fullscreen Toggle Button -->
+            <button 
+              (click)="toggleFullscreen()" 
+              class="absolute top-4 right-4 z-20 w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center justify-center text-slate-900 hover:bg-indigo-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 border border-slate-100"
+              [title]="isFullscreen() ? 'Thu nhỏ' : 'Toàn màn hình'"
+            >
+              <mat-icon>{{ isFullscreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+            </button>
+
+            <!-- Open in New Tab Button -->
+            <button 
+              (click)="openInNewTab(meeting.docs[selectedDocIndex()].url)"
+              class="absolute top-[72px] right-4 z-20 w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center justify-center text-slate-900 hover:bg-indigo-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 border border-slate-100"
+              title="Xem bản gốc"
+            >
+              <mat-icon>open_in_new</mat-icon>
+            </button>
+
+            @if (isFullscreen()) {
+              <!-- Back button only in fullscreen -->
+              <button 
+                (click)="toggleFullscreen()" 
+                class="absolute top-4 left-4 z-20 px-4 py-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center gap-2 text-slate-900 hover:bg-indigo-600 hover:text-white transition-all border border-slate-100 font-bold text-xs uppercase tracking-widest"
+              >
+                <mat-icon class="text-sm">arrow_back</mat-icon> Quay lại
+              </button>
+            }
+
+            <iframe 
+              [src]="getEmbedUrl(meeting.docs[selectedDocIndex()].url) | safeUrl" 
+              class="w-full h-full border-none bg-white"
+              allow="autoplay"
+              title="Tài liệu cuộc họp"
+            ></iframe>
+            
+            <!-- Subtle hint for users if iframe is empty/blocked -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-widest">
+              Đang xem trực tiếp • Cuộn để xem thêm
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    } @else {
+      <!-- List View -->
+      <section class="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 md:p-12">
+        <div class="max-w-6xl mx-auto space-y-12">
+          <!-- Search and Filter -->
+          <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="space-y-1 text-center md:text-left">
+              <h2 class="text-3xl font-black text-slate-900 tracking-tight">Danh sách cuộc họp</h2>
+              <p class="text-slate-400 font-medium">Tra cứu tài liệu và biên bản họp nhanh chóng</p>
+            </div>
+            <div class="relative w-full md:w-96">
+              <mat-icon class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</mat-icon>
+              <input 
+                type="text" 
+                [value]="searchTerm()"
+                (input)="searchTerm.set($any($event.target).value)"
+                placeholder="Tìm tiêu đề, nội dung..."
+                class="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium"
+              >
+            </div>
+          </div>
+
+          @if (filteredMeetings().length === 0) {
+            <div class="py-24 flex flex-col items-center justify-center text-slate-300 text-center">
+              <div class="w-24 h-24 bg-white rounded-[32px] flex items-center justify-center mb-6 shadow-sm">
+                <mat-icon class="text-5xl opacity-20">search_off</mat-icon>
+              </div>
+              <h3 class="text-xl font-black text-slate-900 mb-2">Không tìm thấy kết quả</h3>
+              <p class="max-w-xs font-medium">Hãy thử tìm kiếm với từ khóa khác hoặc tạo cuộc họp mới.</p>
+            </div>
+          } @else {
+            <!-- Upcoming Section -->
+            @if (upcomingMeetings().length > 0) {
+              <div class="space-y-6">
+                <div class="flex items-center gap-3 px-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <h3 class="text-xs font-black uppercase tracking-[0.2em] text-emerald-600">Sắp diễn ra</h3>
+                  <div class="flex-1 h-px bg-emerald-100"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  @for (meeting of upcomingMeetings(); track meeting.id) {
+                    <ng-container *ngTemplateOutlet="meetingCard; context: { $implicit: meeting, type: 'upcoming' }"></ng-container>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Past Section -->
+            @if (pastMeetings().length > 0) {
+              <div class="space-y-6">
+                <div class="flex items-center gap-3 px-2">
+                  <div class="w-2 h-2 rounded-full bg-slate-300"></div>
+                  <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Đã diễn ra</h3>
+                  <div class="flex-1 h-px bg-slate-100"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  @for (meeting of pastMeetings(); track meeting.id) {
+                    <ng-container *ngTemplateOutlet="meetingCard; context: { $implicit: meeting, type: 'past' }"></ng-container>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </section>
+    }
+  </main>
+
+  <!-- Meeting Card Template -->
+  <ng-template #meetingCard let-meeting let-type="type">
+    <div 
+      class="group relative bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-500 cursor-pointer transform hover:-translate-y-2 flex flex-col h-full"
+      (click)="selectMeeting(meeting)"
+      (keydown.enter)="selectMeeting(meeting)"
+      (keydown.space)="selectMeeting(meeting)"
+      tabindex="0"
+      role="button"
+    >
+      <!-- Accent Color Bar -->
+      <div class="absolute top-0 left-0 right-0 h-2 rounded-t-[32px]" [class.bg-emerald-400]="type === 'upcoming'" [class.bg-slate-200]="type === 'past'"></div>
+      
+      <div class="flex justify-between items-start mb-4 pt-2">
+        <div class="flex flex-col">
+          <h3 class="text-xl font-black text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">{{ meeting.title }}</h3>
+          <div class="flex items-center gap-3 mt-2">
+            <div class="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest" [class.text-emerald-600]="type === 'upcoming'" [class.text-slate-400]="type === 'past'">
+              <mat-icon class="text-[14px] w-auto h-auto">calendar_today</mat-icon>
+              {{ meeting.date | date:'dd/MM/yyyy' }}
+            </div>
+            @if (meeting.time) {
+              <div class="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest" [class.text-emerald-600]="type === 'upcoming'" [class.text-slate-400]="type === 'past'">
+                <mat-icon class="text-[14px] w-auto h-auto">schedule</mat-icon>
+                {{ meeting.time }}
+              </div>
+            }
+          </div>
+        </div>
+        <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" [class.bg-emerald-50]="type === 'upcoming'" [class.bg-slate-50]="type === 'past'" [class.text-emerald-600]="type === 'upcoming'" [class.text-slate-400]="type === 'past'">
+          <mat-icon>{{ type === 'upcoming' ? 'event' : 'history' }}</mat-icon>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-500 line-clamp-2 mb-6 flex-1 font-medium leading-relaxed">
+        {{ meeting.description || 'Không có mô tả chi tiết cho cuộc họp này.' }}
+      </p>
+
+      <div class="flex items-center justify-between mt-auto pt-6 border-t border-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="flex -space-x-2">
+            @for (doc of meeting.docs.slice(0, 3); track $index) {
+              <div class="w-8 h-8 rounded-full bg-indigo-50 border-2 border-white flex items-center justify-center text-indigo-600 shadow-sm">
+                <mat-icon class="text-xs">description</mat-icon>
+              </div>
+            }
+          </div>
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {{ meeting.docs.length }} tài liệu
+          </span>
+        </div>
+        <div class="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center group-hover:bg-indigo-600 transition-all shadow-lg">
+          <mat-icon class="text-sm">arrow_forward</mat-icon>
+        </div>
+      </div>
+
+      <!-- Admin Buttons -->
+      @if (isAdmin()) {
+        <div class="absolute -right-2 -top-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all z-10">
+          <button 
+            (click)="editMeeting(meeting, $event)"
+            class="bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white p-2 rounded-2xl shadow-xl border border-indigo-50 transition-all"
+            aria-label="Chỉnh sửa cuộc họp"
+          >
+            <mat-icon class="text-lg">edit</mat-icon>
+          </button>
+          <button 
+            (click)="deleteMeeting(meeting.id, $event)"
+            class="bg-white text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-2xl shadow-xl border border-red-50 transition-all"
+            aria-label="Xóa cuộc họp"
+          >
+            <mat-icon class="text-lg">delete_outline</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  </ng-template>
+
+  <!-- Add Meeting Modal -->
+  @if (isAddingMeeting()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+      <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+        <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+              <mat-icon>{{ isEditingMeeting() ? 'edit' : 'add_task' }}</mat-icon>
+            </div>
+            <div>
+              <h2 class="text-2xl font-black text-slate-900">{{ isEditingMeeting() ? 'Chỉnh sửa cuộc họp' : 'Tạo cuộc họp mới' }}</h2>
+              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ isEditingMeeting() ? 'Cập nhật thông tin và tài liệu' : 'Thiết lập thông tin và tài liệu' }}</p>
+            </div>
+          </div>
+          <button (click)="closeMeetingModal()" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-200 text-slate-400 transition-all">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        
+        <form [formGroup]="meetingForm" (ngSubmit)="addMeeting()" class="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          <div class="grid grid-cols-2 gap-6">
+            <div class="col-span-2 sm:col-span-1">
+              <label for="title" class="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Tiêu đề cuộc họp</label>
+              <input 
+                id="title"
+                formControlName="title"
+                type="text" 
+                placeholder="Ví dụ: Họp chiến lược Q2"
+                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold"
+              >
+            </div>
+            
+            <div class="col-span-2 sm:col-span-1">
+              <label for="date" class="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Ngày diễn ra</label>
+              <input 
+                id="date"
+                formControlName="date"
+                type="date" 
+                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold"
+              >
+            </div>
+
+            <div class="col-span-2 sm:col-span-1">
+              <label for="time" class="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Giờ diễn ra (Tùy chọn)</label>
+              <input 
+                id="time"
+                formControlName="time"
+                type="time" 
+                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold"
+              >
+            </div>
+          </div>
+
+          <div formArrayName="docs" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Danh sách tài liệu</span>
+              <button type="button" (click)="addDocField()" class="text-xs font-black text-indigo-600 flex items-center gap-2 hover:bg-indigo-50 px-3 py-1.5 rounded-xl transition-all">
+                <mat-icon class="text-sm">add_circle</mat-icon> Thêm tài liệu
+              </button>
+            </div>
+            
+            @for (doc of docsArray.controls; track $index; let i = $index) {
+              <div [formGroupName]="i" class="p-5 bg-slate-50 rounded-2xl space-y-3 relative border border-slate-100 group/doc">
+                @if (docsArray.length > 1) {
+                  <button 
+                    type="button" 
+                    (click)="removeDocField(i)"
+                    class="absolute -right-2 -top-2 bg-white text-red-500 hover:bg-red-500 hover:text-white p-1.5 rounded-xl shadow-md border border-red-50 transition-all"
+                  >
+                    <mat-icon class="text-sm">delete</mat-icon>
+                  </button>
+                }
+                
+                <div class="flex gap-4">
+                  <div class="flex-1">
+                    <input 
+                      formControlName="name"
+                      type="text" 
+                      placeholder="Tên tài liệu..."
+                      class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    >
+                  </div>
+                  <div class="flex-[2]">
+                    <input 
+                      formControlName="url"
+                      type="url" 
+                      placeholder="Link Google Drive..."
+                      class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    >
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div>
+            <label for="description" class="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Ghi chú (Tùy chọn)</label>
+            <textarea 
+              id="description"
+              formControlName="description"
+              rows="3"
+              placeholder="Nội dung tóm tắt..."
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none font-medium"
+            ></textarea>
+          </div>
+
+          <div class="pt-6 flex gap-4 sticky bottom-0 bg-white">
+            <button 
+              type="button" 
+              (click)="closeMeetingModal()"
+              class="flex-1 py-4 border-2 border-slate-100 rounded-2xl font-black text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
+            >
+              Hủy bỏ
+            </button>
+            <button 
+              type="submit"
+              [disabled]="meetingForm.invalid"
+              class="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none transition-all transform hover:-translate-y-1 active:translate-y-0"
+            >
+              {{ isEditingMeeting() ? 'Cập nhật cuộc họp' : 'Lưu cuộc họp ngay' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Admin Login Modal -->
+  @if (showAdminLogin()) {
+    <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-white w-full max-w-sm rounded-[32px] shadow-2xl p-8 animate-in zoom-in-95 duration-200 border border-white/20">
+        <div class="flex flex-col items-center text-center mb-8">
+          <div class="w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-100">
+            <mat-icon class="text-3xl">lock</mat-icon>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900">Quản trị viên</h2>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Xác thực quyền truy cập</p>
+        </div>
+        
+        <div class="mb-8">
+          <input 
+            type="password" 
+            [value]="adminPassword()"
+            (input)="adminPassword.set($any($event.target).value)"
+            (keydown.enter)="loginAdmin()"
+            placeholder="Nhập mật khẩu..."
+            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-center font-black tracking-widest"
+          >
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <button 
+            (click)="loginAdmin()"
+            class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
+          >
+            Đăng nhập
+          </button>
+          <button 
+            (click)="showAdminLogin.set(false)"
+            class="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-all"
+          >
+            Quay lại
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Delete Confirmation Modal -->
+  @if (meetingToDelete()) {
+    <div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-red-900/40 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-white w-full max-w-sm rounded-[32px] shadow-2xl p-8 animate-in zoom-in-95 duration-200 border border-white/20">
+        <div class="flex flex-col items-center text-center mb-6">
+          <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-4">
+            <mat-icon class="text-4xl">warning</mat-icon>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900">Xác nhận xóa</h2>
+          <p class="text-sm text-slate-500 mt-2">Dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
+        </div>
+        
+        <div class="flex flex-col gap-3">
+          <button 
+            (click)="confirmDelete()"
+            class="w-full py-4 bg-red-600 text-white rounded-2xl font-black shadow-xl shadow-red-100 hover:bg-red-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
+          >
+            Xóa vĩnh viễn
+          </button>
+          <button 
+            (click)="meetingToDelete.set(null)"
+            class="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-all"
+          >
+            Hủy bỏ
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
