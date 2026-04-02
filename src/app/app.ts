@@ -1,8 +1,29 @@
-import { ChangeDetectionStrategy, Component, signal, inject, OnInit, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject, OnInit, computed, OnDestroy } from '@angular/core';
 import { CommonModule, NgTemplateOutlet } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { SafeUrlPipe } from './safe-url.pipe';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  serverTimestamp,
+  getDocFromServer,
+  Timestamp
+} from 'firebase/firestore';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  signOut,
+  User
+} from 'firebase/auth';
+import { db, auth, OperationType, handleFirestoreError } from './firebase';
 
 interface MeetingDoc {
   name: string;
@@ -16,6 +37,8 @@ interface Meeting {
   time?: string;
   docs: MeetingDoc[];
   description: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 @Component({
@@ -26,7 +49,7 @@ interface Meeting {
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   
   meetings = signal<Meeting[]>([]);
@@ -39,11 +62,14 @@ export class App implements OnInit {
   meetingToDelete = signal<string | null>(null);
   isFullscreen = signal(false);
   
-  // Admin Mode State
+  // Auth State
+  currentUser = signal<User | null>(null);
   isAdmin = signal(false);
+  isAuthReady = signal(false);
   showAdminLogin = signal(false);
-  adminPassword = signal('');
-  private readonly ADMIN_KEY = 'admin123'; // Default key
+  
+  private unsubscribeMeetings?: () => void;
+  private unsubscribeAuth?: () => void;
 
   filteredMeetings = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -125,94 +151,119 @@ export class App implements OnInit {
   }
 
   ngOnInit() {
+    this.testConnection();
+    this.initAuth();
     this.loadMeetings();
-    this.checkAdminSession();
   }
 
-  checkAdminSession() {
-    if (typeof window === 'undefined') return;
-    const session = localStorage.getItem('meeting_hub_admin');
-    if (session === 'true') {
-      this.isAdmin.set(true);
-    }
+  ngOnDestroy() {
+    if (this.unsubscribeMeetings) this.unsubscribeMeetings();
+    if (this.unsubscribeAuth) this.unsubscribeAuth();
   }
 
-  loginAdmin() {
-    if (this.adminPassword() === this.ADMIN_KEY) {
-      this.isAdmin.set(true);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('meeting_hub_admin', 'true');
+  async testConnection() {
+    try {
+      await getDocFromServer(doc(db, 'test', 'connection'));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('the client is offline')) {
+        console.error("Please check your Firebase configuration.");
       }
-      this.showAdminLogin.set(false);
-      this.adminPassword.set('');
-    } else {
-      alert('Mật khẩu quản trị không đúng!');
     }
   }
 
-  logoutAdmin() {
-    this.isAdmin.set(false);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('meeting_hub_admin');
+  initAuth() {
+    this.unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      this.currentUser.set(user);
+      if (user) {
+        // Check if user is admin
+        // For simplicity, we'll use the email from the rules or a users collection
+        const userDocRef = doc(db, 'users', user.uid);
+        try {
+          const userSnap = await getDocFromServer(userDocRef);
+          if (userSnap.exists() && userSnap.data()['role'] === 'admin') {
+            this.isAdmin.set(true);
+          } else if (user.email === 'luongmtriet.tltl@gmail.com') {
+            this.isAdmin.set(true);
+          } else {
+            this.isAdmin.set(false);
+          }
+        } catch {
+          // If user doc doesn't exist, check default admin email
+          if (user.email === 'luongmtriet.tltl@gmail.com') {
+            this.isAdmin.set(true);
+          } else {
+            this.isAdmin.set(false);
+          }
+        }
+      } else {
+        this.isAdmin.set(false);
+      }
+      this.isAuthReady.set(true);
+    });
+  }
+
+  async loginAdmin() {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      this.showAdminLogin.set(false);
+    } catch (error) {
+      console.error('Login failed', error);
+      alert('Đăng nhập thất bại!');
+    }
+  }
+
+  async logoutAdmin() {
+    try {
+      await signOut(auth);
+      this.isAdmin.set(false);
+    } catch (error) {
+      console.error('Logout failed', error);
     }
   }
 
   loadMeetings() {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('meeting_hub_data');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        // Migration for old data format
-        const migrated = data.map((m: { docUrl?: string; docs?: MeetingDoc[] } & Partial<Meeting>) => {
-          if (m.docUrl && !m.docs) {
-            return {
-              ...m,
-              docs: [{ name: 'Tài liệu gốc', url: m.docUrl }]
-            };
-          }
-          return m;
-        });
-        this.meetings.set(migrated);
-      } catch (e) {
-        console.error('Error parsing saved meetings', e);
-      }
-    }
+    const meetingsRef = collection(db, 'meetings');
+    const q = query(meetingsRef, orderBy('date', 'desc'), orderBy('time', 'desc'));
+    
+    this.unsubscribeMeetings = onSnapshot(q, (snapshot) => {
+      const meetingsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Meeting[];
+      this.meetings.set(meetingsData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'meetings');
+    });
   }
 
-  saveMeetings() {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('meeting_hub_data', JSON.stringify(this.meetings()));
-  }
-
-  addMeeting() {
+  async addMeeting() {
     if (this.meetingForm.valid) {
       const meetingData = {
         title: this.meetingForm.value.title!,
         date: this.meetingForm.value.date!,
         time: this.meetingForm.value.time || '',
         docs: (this.meetingForm.value.docs as MeetingDoc[]) || [],
-        description: this.meetingForm.value.description || ''
+        description: this.meetingForm.value.description || '',
+        updatedAt: serverTimestamp()
       };
 
-      if (this.isEditingMeeting() && this.editingMeetingId()) {
-        const id = this.editingMeetingId()!;
-        this.meetings.update(prev => prev.map(m => m.id === id ? { ...m, ...meetingData } : m));
-        
-        // Update selected meeting if it's the one being edited
-        if (this.selectedMeeting()?.id === id) {
-          this.selectedMeeting.set({ id, ...meetingData });
+      try {
+        if (this.isEditingMeeting() && this.editingMeetingId()) {
+          const id = this.editingMeetingId()!;
+          const meetingRef = doc(db, 'meetings', id);
+          await updateDoc(meetingRef, meetingData);
+        } else {
+          const meetingsRef = collection(db, 'meetings');
+          await addDoc(meetingsRef, {
+            ...meetingData,
+            createdAt: serverTimestamp()
+          });
         }
-      } else {
-        const newMeeting: Meeting = {
-          id: Date.now().toString(),
-          ...meetingData
-        };
-        this.meetings.update(prev => [newMeeting, ...prev]);
+        this.closeMeetingModal();
+      } catch (error) {
+        handleFirestoreError(error, this.isEditingMeeting() ? OperationType.UPDATE : OperationType.CREATE, 'meetings');
       }
-
-      this.saveMeetings();
-      this.closeMeetingModal();
     }
   }
 
@@ -264,22 +315,32 @@ export class App implements OnInit {
     this.meetingToDelete.set(id);
   }
 
-  confirmDelete() {
+  async confirmDelete() {
     const id = this.meetingToDelete();
     if (id === 'all') {
-      this.meetings.set([]);
-      this.saveMeetings();
+      // Deleting all is complex in Firestore, we'll just delete one by one or skip for now
+      // For safety, let's just delete the ones currently in view
+      for (const m of this.meetings()) {
+        try {
+          await deleteDoc(doc(db, 'meetings', m.id));
+        } catch (e) {
+          console.error('Error deleting meeting', m.id, e);
+        }
+      }
       this.selectedMeeting.set(null);
       this.meetingToDelete.set(null);
       return;
     }
     if (id) {
-      this.meetings.update(prev => prev.filter(m => m.id !== id));
-      this.saveMeetings();
-      if (this.selectedMeeting()?.id === id) {
-        this.selectedMeeting.set(null);
+      try {
+        await deleteDoc(doc(db, 'meetings', id));
+        if (this.selectedMeeting()?.id === id) {
+          this.selectedMeeting.set(null);
+        }
+        this.meetingToDelete.set(null);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `meetings/${id}`);
       }
-      this.meetingToDelete.set(null);
     }
   }
 

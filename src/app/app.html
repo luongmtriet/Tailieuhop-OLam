@@ -13,6 +13,10 @@
     
     <div class="flex items-center gap-4">
       @if (isAdmin()) {
+        <div class="hidden md:flex flex-col items-end mr-2">
+          <span class="text-[10px] font-black text-white uppercase tracking-widest">{{ currentUser()?.displayName || currentUser()?.email }}</span>
+          <span class="text-[8px] text-emerald-300 font-bold uppercase tracking-widest">Quản trị viên</span>
+        </div>
         <button (click)="logoutAdmin()" class="text-indigo-100 hover:text-white flex items-center gap-1 text-xs font-bold uppercase tracking-widest transition-all bg-white/10 px-3 py-2 rounded-xl hover:bg-white/20">
           <mat-icon class="text-sm">logout</mat-icon> Thoát
         </button>
@@ -469,23 +473,13 @@
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Xác thực quyền truy cập</p>
         </div>
         
-        <div class="mb-8">
-          <input 
-            type="password" 
-            [value]="adminPassword()"
-            (input)="adminPassword.set($any($event.target).value)"
-            (keydown.enter)="loginAdmin()"
-            placeholder="Nhập mật khẩu..."
-            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-center font-black tracking-widest"
-          >
-        </div>
-
         <div class="flex flex-col gap-3">
           <button 
             (click)="loginAdmin()"
-            class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
+            class="w-full py-4 bg-white border-2 border-slate-100 text-slate-700 rounded-2xl font-black shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
           >
-            Đăng nhập
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google Logo">
+            Đăng nhập với Google
           </button>
           <button 
             (click)="showAdminLogin.set(false)"
@@ -493,6 +487,13 @@
           >
             Quay lại
           </button>
+        </div>
+        
+        <div class="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+          <p class="text-[10px] text-amber-700 leading-relaxed font-medium">
+            <mat-icon class="text-xs align-middle mr-1">info</mat-icon>
+            Chỉ những tài khoản được cấp quyền mới có thể truy cập các tính năng quản trị.
+          </p>
         </div>
       </div>
     </div>

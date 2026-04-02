@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Represents a meeting with its documents",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the meeting" },
+        "date": { "type": "string", "description": "The date of the meeting (YYYY-MM-DD)" },
+        "time": { "type": "string", "description": "The time of the meeting (HH:mm)" },
+        "description": { "type": "string", "description": "A brief description of the meeting" },
+        "docs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "date", "docs"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "meetings": {
+      "schema": "Meeting",
+      "description": "Collection of all meetings"
+    },
+    "users": {
+      "schema": "User",
+      "description": "Collection of user profiles and roles"
+    }
+  }
+}
