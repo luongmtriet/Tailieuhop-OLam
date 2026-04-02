@@ -207,9 +207,17 @@ export class App implements OnInit, OnDestroy {
     try {
       await signInWithPopup(auth, provider);
       this.showAdminLogin.set(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed', error);
-      alert('Đăng nhập thất bại!');
+      let errorMessage = 'Đăng nhập thất bại!';
+      
+      if (error?.code === 'auth/unauthorized-domain') {
+        errorMessage = 'Lỗi: Tên miền này chưa được ủy quyền trong Firebase Console. Vui lòng thêm tên miền của trang web vào danh sách "Authorized domains" trong phần Authentication của Firebase.';
+      } else if (error?.message) {
+        errorMessage = `Đăng nhập thất bại: ${error.message}`;
+      }
+      
+      alert(errorMessage);
     }
   }
 
